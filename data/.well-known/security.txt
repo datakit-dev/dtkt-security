@@ -1,0 +1,12 @@
+Contact: https://github.com/datakit-dev/dtkt-security/security
+Contact: mailto:security@withdatakit.com
+Contact: https://withdatakit.com/security
+Encryption: https://withdatakit.com/.well-known/datakit-security.pub.asc
+Acknowledgments: https://withdatakit.com/security/researchers#hall-of-fame
+Canonical: https://withdatakit.com/.well-known/security.txt
+Canonical: https://datakit.cloud/.well-known/security.txt
+Canonical: https://dtkt.dev/.well-known/security.txt
+Canonical: https://raw.githubusercontent.com/datakit-dev/dtkt-security/refs/heads/main/data/.well-known/security.txt
+Policy: https://github.com/datakit-dev/dtkt-security
+Policy: https://withdatakit.com/security/researchers#responsible-disclosure
+Expires: 2025-07-01T00:00:00Z

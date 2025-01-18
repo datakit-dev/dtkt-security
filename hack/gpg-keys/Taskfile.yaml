@@ -1,0 +1,50 @@
+version: '3'
+
+includes:
+  sops:
+    taskfile: ${TASK_PATH}/Taskfile.sops.yaml
+
+tasks:
+  update:
+    cmds:
+    - echo "Updating GPG keys..."
+    - echo GPG_PASSPHRASE={{ .GPG_PASSPHRASE }}
+    - gpg --batch --passphrase {{ .GPG_PASSPHRASE }} --pinentry-mode loopback --gen-key gpg-key.conf
+    - gpg --export --armor security@withdatakit.com > ../../data/.well-known/datakit-security.pub.asc
+    - gpg --batch --yes --passphrase {{ .GPG_PASSPHRASE }} --pinentry-mode loopback --export-secret-keys --armor security@withdatakit.com > secrets/restricted/datakit-security.asc
+    - task: sops:encrypt
+    vars:
+      GPG_PASSPHRASE:
+        sh: openssl rand -base64 100 | tr -d '\n' | cut -c 1-64
+
+  list:
+    cmds:
+    - echo "Listing GPG keys..."
+    - gpg --list-keys --keyid-format long security@withdatakit.com
+    - gpg --list-secret-keys --keyid-format long security@withdatakit.com
+
+  delete:
+    cmds:
+    - echo "Deleting GPG keys..."
+    - |
+      # Get the primary secret key fingerprint (first entry)
+      PRIMARY_KEY=$(gpg --list-secret-keys --with-colons security@withdatakit.com | grep "^fpr" | cut -d':' -f10 | head -n 1)
+
+      # If a primary key exists, delete it
+      if [ -n "$PRIMARY_KEY" ]; then
+          echo "Deleting secret key: $PRIMARY_KEY"
+          gpg --batch --yes --delete-secret-keys "$PRIMARY_KEY"
+      else
+          echo "No secret keys found for security@withdatakit.com"
+      fi
+
+      # Now delete the corresponding public key
+      PRIMARY_KEY=$(gpg --list-keys --with-colons security@withdatakit.com | grep "^fpr" | cut -d':' -f10 | head -n 1)
+
+      # If a public key exists, delete it
+      if [ -n "$PRIMARY_KEY" ]; then
+          echo "Deleting public key: $PRIMARY_KEY"
+          gpg --batch --yes --delete-keys "$PRIMARY_KEY"
+      else
+          echo "No public keys found for security@withdatakit.com"
+      fi
