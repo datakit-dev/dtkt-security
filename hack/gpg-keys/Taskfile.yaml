@@ -1,0 +1,70 @@
+version: '3'
+
+includes:
+  sops:
+    taskfile: ${TASK_PATH}/Taskfile.sops.yaml
+
+tasks:
+  create:
+    desc: Create security@withdatakit.com GPG key
+    cmds:
+    - task: delete-all
+    - echo "Creating security@withdatakit.com GPG key..."
+    - gpg --batch --passphrase {{ .GPG_PASSPHRASE }} --pinentry-mode loopback --gen-key gpg-key.conf
+    - gpg --export --armor security@withdatakit.com > ../../data/.well-known/datakit-security.pub.asc
+    - gpg --batch --yes --passphrase {{ .GPG_PASSPHRASE }} --pinentry-mode loopback --export-secret-keys --armor security@withdatakit.com > secrets/restricted/datakit-security.asc
+    - echo -n "{{ .GPG_PASSPHRASE }}" > secrets/restricted/datakit-security-passphrase.txt
+    - task: sops:encrypt
+    - task: 1password:update
+      vars:
+        GPG_PASSPHRASE: '{{ .GPG_PASSPHRASE }}'
+    vars:
+      GPG_PASSPHRASE:
+        sh: openssl rand -base64 100 | tr -d '\n' | cut -c 1-64
+
+  1password:update:
+    desc: Update 1Password with GPG key files
+    internal: true
+    cmds:
+    - echo "Updating 1Password..."
+    - op item edit 'PGP Key security@withdatakit.com' 'password={{ .GPG_PASSPHRASE }}'
+    - op item edit 'PGP Key security@withdatakit.com' 'datakit-security\.pub\.asc[file]=../../data/.well-known/datakit-security.pub.asc'
+    - op item edit 'PGP Key security@withdatakit.com' 'datakit-security\.asc[file]=secrets/restricted/datakit-security.asc'
+    - echo "1Password updated."
+
+  delete-all:
+    desc: Delete all security@withdatakit.com GPG keys
+    cmds:
+    - echo "Deleting all security@withdatakit.com GPG keys..."
+    - |
+      # Delete all secret security@withdatakit.com keys
+      while true; do
+        PRIMARY_KEY=$(gpg --list-secret-keys --with-colons security@withdatakit.com 2>/dev/null | grep "^fpr" | cut -d':' -f10 | head -n 1)
+        [ -z "$PRIMARY_KEY" ] && break
+        echo "Deleting secret key: $PRIMARY_KEY"
+        gpg --batch --yes --delete-secret-keys "$PRIMARY_KEY"
+      done
+
+      # Delete all public security@withdatakit.com keys
+      while true; do
+        PRIMARY_KEY=$(gpg --list-keys --with-colons security@withdatakit.com 2>/dev/null | grep "^fpr" | cut -d':' -f10 | head -n 1)
+        [ -z "$PRIMARY_KEY" ] && break
+        echo "Deleting public key: $PRIMARY_KEY"
+        gpg --batch --yes --delete-keys "$PRIMARY_KEY"
+      done
+    - echo "All GPG keys deleted."
+
+  load:
+    desc: Load security@withdatakit.com GPG key from stored files
+    cmds:
+    - echo "Loading security@withdatakit.com GPG key..."
+    - gpg --batch --import ../../data/.well-known/datakit-security.pub.asc
+    - task: sops:decrypt
+    - gpg --batch --import secrets/restricted/datakit-security.asc
+
+  list:
+    desc: List security@withdatakit.com GPG keys
+    cmds:
+    - echo "Listing security@withdatakit.com GPG keys..."
+    - gpg --list-keys --keyid-format long security@withdatakit.com
+    - gpg --list-secret-keys --keyid-format long security@withdatakit.com

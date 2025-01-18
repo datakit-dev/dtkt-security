@@ -1,0 +1,37 @@
+version: '3'
+
+includes:
+  gpg-keys:
+    taskfile: hack/gpg-keys/Taskfile.yaml
+    dir: hack/gpg-keys
+
+tasks:
+  update-security-txt:
+    dir: hack/update-security-txt
+    cmds:
+    - go run .
+
+  update-cosign-pub:
+    cmds:
+    - |
+      key_version=$(gcloud kms keys versions list \
+        --project=datakit-ops \
+        --location=us \
+        --keyring=secrets \
+        --key=cosign \
+        --sort-by='~name' \
+        --limit=1 \
+        --format='value(name)' | awk -F'/' '{print $NF}')
+
+      gcloud kms keys versions get-public-key $key_version \
+        --project=datakit-ops \
+        --location=us \
+        --keyring=secrets \
+        --key=cosign \
+        --output-file ./data/.well-known/cosign.pub
+
+  git-clean-ignored:
+    desc: Delete all files listed in .gitignore files
+    prompt: Are you sure you want to delete all files and directories listed in .gitignore files?
+    cmds:
+    - git clean -fdX
