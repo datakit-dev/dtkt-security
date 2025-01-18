@@ -1,0 +1,9 @@
+creation_rules:
+- path_regex: confidential
+  gcp_kms: projects/datakit-ops/locations/us/keyRings/secrets/cryptoKeys/confidential
+
+- path_regex: restricted
+  gcp_kms: projects/datakit-ops/locations/us/keyRings/secrets/cryptoKeys/restricted
+
+# Default
+- gcp_kms: projects/datakit-ops/locations/us/keyRings/secrets/cryptoKeys/restricted
