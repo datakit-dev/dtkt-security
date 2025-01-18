@@ -1,0 +1,9 @@
+### OS
+.DS_Store
+
+### Secrets
+**/secrets/confidential/*.*
+!**/secrets/confidential/*.enc.*
+
+**/secrets/restricted/*.*
+!**/secrets/restricted/*.enc.*
